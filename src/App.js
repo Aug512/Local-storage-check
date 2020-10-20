@@ -1,191 +1,57 @@
-import React, { Component } from "react";
-import logo from "./logo.svg";
-import "./App.css";
+import React, { useState } from 'react';
 
-class App extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      newItem: "",
-      list: []
-    };
-  }
+// Usage
+function App() {
+  // Similar to useState but first arg is key to the value in local storage.
+  const [name, setName] = useLocalStorage('name', 'Bob');
 
-  // updateInput(key, value) {
-  //   // update react state
-  //   this.setState({ [key]: value });
-  // }
+  return (
+    <div>
+      <input
+        type="text"
+        placeholder="Enter your name"
+        value={name}
+        onChange={e => setName(e.target.value)}
+      />
+    </div>
+  );
+}
 
-  updateInput(key, value) {
-    // update react state
-    this.setState({ [key]: value });
-
-    // update localStorage
-    localStorage.setItem(key, value);
-  }
-
-  // addItem() {
-  //   // create a new item
-  //   const newItem = {
-  //     id: 1 + Math.random(),
-  //     value: this.state.newItem.slice()
-  //   };
-
-  //   // copy current list of items
-  //   const list = [...this.state.list];
-
-  //   // add the new item to the list
-  //   list.push(newItem);
-
-  //   // update state with new list, reset the new item input
-  //   this.setState({
-  //     list,
-  //     newItem: ""
-  //   });
-  // }
-
-  addItem() {
-    // create a new item
-    const newItem = {
-      id: 1 + Math.random(),
-      value: this.state.newItem.slice()
-    };
-
-    // copy current list of items
-    const list = [...this.state.list];
-
-    // add the new item to the list
-    list.push(newItem);
-
-    // update state with new list, reset the new item input
-    this.setState({
-      list,
-      newItem: ""
-    });
-
-    // update localStorage
-    localStorage.setItem("list", JSON.stringify(list));
-    localStorage.setItem("newItem", "");
-  }
-
-  // deleteItem(id) {
-  //   // copy current list of items
-  //   const list = [...this.state.list];
-  //   // filter out the item being deleted
-  //   const updatedList = list.filter(item => item.id !== id);
-
-  //   this.setState({ list: updatedList });
-  // }
-
-
-  deleteItem(id) {
-    // copy current list of items
-    const list = [...this.state.list];
-    // filter out the item being deleted
-    const updatedList = list.filter(item => item.id !== id);
-
-    this.setState({ list: updatedList });
-
-    // update localStorage
-    localStorage.setItem("list", JSON.stringify(updatedList));
-  }
-
-  hydrateStateWithLocalStorage() {
-    // for all items in state
-    for (let key in this.state) {
-      // if the key exists in localStorage
-      if (localStorage.hasOwnProperty(key)) {
-        // get the key's value from localStorage
-        let value = localStorage.getItem(key);
-
-        // parse the localStorage string and setState
-        try {
-          value = JSON.parse(value);
-          this.setState({ [key]: value });
-        } catch (e) {
-          // handle empty string
-          this.setState({ [key]: value });
-        }
-      }
+// Hook
+function useLocalStorage(key, initialValue) {
+  // State to store our value
+  // Pass initial state function to useState so logic is only executed once
+  const [storedValue, setStoredValue] = useState(() => {
+    try {
+      // Get from local storage by key
+      const item = window.localStorage.getItem(key);
+      // Parse stored json or if none return initialValue
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      // If error also return initialValue
+      console.log(error);
+      return initialValue;
     }
-  }
+  });
 
-  componentDidMount() {
-    this.hydrateStateWithLocalStorage();
-
-    // add event listener to save state to localStorage
-    // when user leaves/refreshes the page
-    window.addEventListener(
-      "beforeunload",
-      this.saveStateToLocalStorage.bind(this)
-    );
-  }
-
-  componentWillUnmount() {
-      window.removeEventListener(
-        "beforeunload",
-        this.saveStateToLocalStorage.bind(this)
-      );
-
-      // saves if component has a chance to unmount
-      this.saveStateToLocalStorage();
-  }
-
-
-  saveStateToLocalStorage() {
-    // for every item in React state
-    for (let key in this.state) {
-      // save to localStorage
-      localStorage.setItem(key, JSON.stringify(this.state[key]));
+  // Return a wrapped version of useState's setter function that ...
+  // ... persists the new value to localStorage.
+  const setValue = value => {
+    try {
+      // Allow value to be a function so we have same API as useState
+      const valueToStore =
+        value instanceof Function ? value(storedValue) : value;
+      // Save state
+      setStoredValue(valueToStore);
+      // Save to local storage
+      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+    } catch (error) {
+      // A more advanced implementation would handle the error case
+      console.log(error);
     }
-  }
+  };
 
-  render() {
-    return (
-      <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <h1 className="App-title">Welcome to React LocalStorage Tutorial</h1>
-        </header>
-        <div
-          style={{
-            padding: 50,
-            textAlign: "left",
-            maxWidth: 500,
-            margin: "auto"
-          }}
-        >
-          Add an item to the list
-          <br />
-          <input
-            type="text"
-            placeholder="Type item here"
-            value={this.state.newItem}
-            onChange={e => this.updateInput("newItem", e.target.value)}
-          />
-          <button
-            onClick={() => this.addItem()}
-            disabled={!this.state.newItem.length}
-          >
-            &#43; Add
-          </button>
-          <br /> <br />
-          <ul>
-            {this.state.list.map(item => {
-              return (
-                <li key={item.id}>
-                  {item.value}
-                  <button onClick={() => this.deleteItem(item.id)}>
-                    Remove
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </div>
-    );
-  }
+  return [storedValue, setValue];
 }
 
 export default App;
